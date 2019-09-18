@@ -118,6 +118,29 @@ public class RelationalEntityWriterUnitTests {
 				);
 	}
 
+	@Test // DATAJDBC-417
+	public void nullEmbeddedFails() {
+
+		EmbeddedReferenceChainEntity entity = new EmbeddedReferenceChainEntity(null);
+// the embedded is null !!!
+
+
+		AggregateChange<EmbeddedReferenceChainEntity> aggregateChange = //
+				new AggregateChange<>(Kind.SAVE, EmbeddedReferenceChainEntity.class, entity);
+
+		converter.write(entity, aggregateChange);
+
+		assertThat(aggregateChange.getActions()) //
+				.extracting(DbAction::getClass, //
+						DbAction::getEntityType, //
+						DbActionTestSupport::extractPath, //
+						DbActionTestSupport::actualEntityType, //
+						DbActionTestSupport::isWithDependsOn) //
+				.containsExactly( //
+						tuple(InsertRoot.class, EmbeddedReferenceChainEntity.class, "", EmbeddedReferenceChainEntity.class, false) //
+				);
+	}
+
 	@Test // DATAJDBC-112
 	public void newEntityWithReferenceGetsConvertedToTwoInserts() {
 
@@ -586,6 +609,13 @@ public class RelationalEntityWriterUnitTests {
 	}
 
 	@RequiredArgsConstructor
+	static class EmbeddedReferenceChainEntity {
+
+		@Id final Long id;
+		@Embedded(onEmpty = OnEmpty.USE_NULL, prefix = "prefix_") ElementReference other;
+	}
+
+	@RequiredArgsConstructor
 	static class ReferenceWoIdEntity {
 
 		@Id final Long id;
@@ -639,6 +669,11 @@ public class RelationalEntityWriterUnitTests {
 	@RequiredArgsConstructor
 	private static class Element {
 		@Id final Long id;
+	}
+
+	@RequiredArgsConstructor
+	private static class ElementReference {
+		final Element element;
 	}
 
 	@RequiredArgsConstructor
